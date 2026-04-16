@@ -9,13 +9,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fraunces:opsz,wght@9..144,700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-1: #050b16;
-      --bg-2: #10223d;
-      --text: #edf2ff;
-      --muted: #9fb1cf;
-      --line: rgba(173, 197, 236, 0.28);
-      --soft: rgba(173, 197, 236, 0.1);
-      --accent-1: #38bdf8;
+      --bg-1: #eef5ff;
+      --bg-2: #dbeafe;
+      --text: #0f1f3a;
+      --muted: #4f6b95;
+      --line: rgba(79, 107, 149, 0.28);
+      --soft: rgba(79, 107, 149, 0.08);
+      --accent-1: #0ea5e9;
       --accent-2: #fb923c;
       --success: #34d399;
     }
@@ -28,16 +28,87 @@
       font-family: "Space Grotesk", sans-serif;
       color: var(--text);
       background:
-        radial-gradient(circle at 12% 8%, rgba(56, 189, 248, 0.2), transparent 34%),
-        radial-gradient(circle at 85% 12%, rgba(251, 146, 60, 0.2), transparent 30%),
-        radial-gradient(circle at 50% 95%, rgba(52, 211, 153, 0.15), transparent 32%),
+        radial-gradient(circle at 12% 8%, rgba(14, 165, 233, 0.16), transparent 34%),
+        radial-gradient(circle at 85% 12%, rgba(249, 115, 22, 0.12), transparent 30%),
+        radial-gradient(circle at 50% 95%, rgba(52, 211, 153, 0.1), transparent 32%),
         linear-gradient(140deg, var(--bg-1), var(--bg-2));
       padding: 24px;
+    }
+
+    body[data-theme="ocean"] {
+      --bg-1: #e9f7ff;
+      --bg-2: #d6efff;
+      --text: #10263f;
+      --muted: #3f678f;
+      --line: rgba(63, 103, 143, 0.3);
+      --soft: rgba(63, 103, 143, 0.08);
+      --accent-1: #0284c7;
+      --accent-2: #06b6d4;
+    }
+
+    body[data-theme="midnight"] {
+      --bg-1: #070b14;
+      --bg-2: #111827;
+      --text: #e5edff;
+      --muted: #95a6c9;
+      --line: rgba(149, 166, 201, 0.3);
+      --soft: rgba(149, 166, 201, 0.1);
+      --accent-1: #38bdf8;
+      --accent-2: #a78bfa;
+    }
+
+    body[data-theme="graphite"] {
+      --bg-1: #0f1115;
+      --bg-2: #1b1f27;
+      --text: #eef2f7;
+      --muted: #a4adba;
+      --line: rgba(164, 173, 186, 0.3);
+      --soft: rgba(164, 173, 186, 0.1);
+      --accent-1: #22d3ee;
+      --accent-2: #f59e0b;
+    }
+
+    body[data-theme="midnight"] .daily-quote,
+    body[data-theme="graphite"] .daily-quote,
+    body[data-theme="midnight"] .victory-wall h3,
+    body[data-theme="graphite"] .victory-wall h3,
+    body[data-theme="midnight"] .victory-item strong,
+    body[data-theme="graphite"] .victory-item strong,
+    body[data-theme="midnight"] .signature strong,
+    body[data-theme="graphite"] .signature strong,
+    body[data-theme="midnight"] .punishment .txt,
+    body[data-theme="graphite"] .punishment .txt,
+    body[data-theme="midnight"] .clear,
+    body[data-theme="graphite"] .clear,
+    body[data-theme="midnight"] .attach-proof-btn,
+    body[data-theme="graphite"] .attach-proof-btn {
+      color: #e5edff;
+    }
+
+    body[data-theme="midnight"] .signature,
+    body[data-theme="graphite"] .signature,
+    body[data-theme="midnight"] .victory-item p,
+    body[data-theme="graphite"] .victory-item p,
+    body[data-theme="midnight"] .entry .top,
+    body[data-theme="graphite"] .entry .top,
+    body[data-theme="midnight"] .entry .nota,
+    body[data-theme="graphite"] .entry .nota,
+    body[data-theme="midnight"] .streak,
+    body[data-theme="graphite"] .streak {
+      color: #b8c7e6;
+    }
+
+    body[data-theme="midnight"] .save,
+    body[data-theme="graphite"] .save {
+      color: #eaf6ff;
+      background: rgba(56, 189, 248, 0.2);
+      border-color: rgba(56, 189, 248, 0.45);
     }
 
     .wrap {
       max-width: 1200px;
       margin: 0 auto;
+      padding-bottom: 60px;
       animation: rise 700ms ease-out;
     }
 
@@ -46,13 +117,87 @@
       margin-bottom: 30px;
     }
 
+    .theme-dock {
+      position: fixed;
+      right: 18px;
+      top: 16px;
+      z-index: 30;
+      display: grid;
+      gap: 8px;
+      justify-items: end;
+    }
+
+    .theme-toggle {
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      padding: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0.8;
+      transition: opacity 150ms ease, transform 150ms ease, color 150ms ease;
+    }
+
+    .theme-toggle:hover {
+      opacity: 1;
+      color: var(--accent-1);
+      transform: translateY(-1px);
+    }
+
+    .theme-toggle:focus-visible {
+      outline: 1px solid var(--line);
+      outline-offset: 4px;
+      opacity: 1;
+    }
+
+    .theme-toggle svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .theme-menu {
+      display: none;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(5px);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      min-width: 92px;
+    }
+
+    .theme-menu.open {
+      display: grid;
+    }
+
+    .theme-swatch {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      cursor: pointer;
+    }
+
+    .theme-swatch.active {
+      outline: 2px solid var(--accent-1);
+      outline-offset: 2px;
+    }
+
     .hero h1 {
       margin: 0 0 10px;
       font-family: "Fraunces", serif;
       font-size: clamp(2.15rem, 4.4vw, 3.5rem);
       letter-spacing: 0.7px;
       font-weight: 700;
-      background: linear-gradient(110deg, #d9e7ff, #8bd6ff, #ffcb98, #d9e7ff);
+      background: linear-gradient(110deg, #1d4ed8, #0284c7, #ea580c, #1d4ed8);
       background-size: 280% auto;
       color: transparent;
       -webkit-background-clip: text;
@@ -67,31 +212,95 @@
       letter-spacing: 0.2px;
     }
 
+    .motivation {
+      margin: 22px 0 28px;
+      padding: 8px 2px 12px;
+      border-bottom: 1px solid rgba(173, 197, 236, 0.2);
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .daily-quote {
+      margin: 0;
+      text-align: center;
+      color: #1e3a8a;
+      font-size: 0.92rem;
+      letter-spacing: 0.2px;
+    }
+
     .board {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 28px;
+      gap: 36px;
     }
 
     .signature {
-      margin: 18px 0 0;
+      margin: 36px 0 0;
       text-align: center;
       font-size: 0.8rem;
       letter-spacing: 0.9px;
       text-transform: uppercase;
-      color: #b7c8e7;
+      color: #375681;
       opacity: 0.9;
     }
 
     .signature strong {
-      color: #dbeafe;
+      color: #1e3a8a;
       font-weight: 700;
     }
 
+    .victory-wall {
+      margin: 30px 0 18px;
+      padding: 18px 0 0;
+      border-top: 1px solid rgba(173, 197, 236, 0.2);
+      border-radius: 0;
+      background: transparent;
+      display: grid;
+      gap: 14px;
+    }
+
+    .victory-wall h3 {
+      margin: 0;
+      font-size: 0.92rem;
+      color: #1e3a8a;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+
+    .victory-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .victory-item {
+      border: 0;
+      border-left: 1px solid rgba(173, 197, 236, 0.2);
+      border-radius: 0;
+      padding: 4px 0 4px 10px;
+      background: transparent;
+    }
+
+    .victory-item strong {
+      display: block;
+      font-size: 0.78rem;
+      color: #1e3a8a;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .victory-item p {
+      margin: 0;
+      font-size: 0.82rem;
+      color: #36557f;
+      line-height: 1.35;
+    }
+
     .panel {
-      background: linear-gradient(160deg, rgba(11, 22, 44, 0.35), rgba(11, 22, 44, 0.12));
-      border-radius: 24px;
-      padding: 20px 18px 18px;
+      background: transparent;
+      border-radius: 0;
+      padding: 20px 8px 18px;
       position: relative;
       overflow: hidden;
     }
@@ -99,11 +308,11 @@
     .panel::before {
       content: "";
       position: absolute;
-      left: 18px;
-      right: 18px;
+      left: 8px;
+      right: 8px;
       top: 0;
-      height: 2px;
-      background: linear-gradient(90deg, rgba(56, 189, 248, 0.7), rgba(251, 146, 60, 0.7));
+      height: 1px;
+      background: rgba(79, 107, 149, 0.22);
       pointer-events: none;
     }
 
@@ -112,6 +321,19 @@
       font-size: 1.35rem;
       letter-spacing: 0.45px;
       text-transform: uppercase;
+    }
+
+    .streak {
+      margin-left: auto;
+      font-size: 0.72rem;
+      color: #2f5284;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      opacity: 0.9;
     }
 
     .person-head {
@@ -126,8 +348,8 @@
       height: 68px;
       border-radius: 50%;
       object-fit: cover;
-      border: 1px solid var(--line);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+      border: 0;
+      box-shadow: none;
     }
 
     .motivos {
@@ -148,7 +370,7 @@
     input[type="text"], textarea {
       width: 100%;
       border: 0;
-      border-bottom: 1px solid var(--line);
+      border-bottom: 1px solid rgba(79, 107, 149, 0.35);
       background: transparent;
       color: var(--text);
       border-radius: 0;
@@ -158,9 +380,15 @@
       transition: border-color 180ms ease, background-color 180ms ease;
     }
 
+    input[type="text"]::placeholder,
+    textarea::placeholder {
+      color: var(--muted);
+      opacity: 0.45;
+    }
+
     input[type="text"]:focus, textarea:focus {
-      border-bottom-color: var(--accent-1);
-      background: rgba(255, 255, 255, 0.02);
+      border-bottom-color: rgba(14, 165, 233, 0.8);
+      background: transparent;
     }
 
     textarea {
@@ -174,8 +402,56 @@
       margin-bottom: 16px;
     }
 
+    .punishment-tip {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.35;
+    }
+
+    .custom-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .custom-head label {
+      margin-bottom: 0;
+    }
+
+    .custom-toggle {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      border: 1px solid rgba(79, 107, 149, 0.35);
+      background: transparent;
+      color: var(--text);
+      padding: 0;
+      font-size: 1.1rem;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
     .custom-punishment {
-      margin: 0 0 16px;
+      margin: 0;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 220ms ease, opacity 180ms ease, margin 220ms ease;
+    }
+
+    .custom-punishment.open {
+      margin: 8px 0 16px;
+      max-height: 140px;
+      opacity: 1;
+    }
+
+    .custom-head {
+      margin-bottom: 14px;
     }
 
     .custom-row {
@@ -189,9 +465,9 @@
     }
 
     .add-punishment {
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.03);
-      color: #dbeafe;
+      border: 1px solid rgba(79, 107, 149, 0.28);
+      background: transparent;
+      color: #204b85;
       border-radius: 999px;
       padding: 9px 14px;
       font-size: 0.86rem;
@@ -214,7 +490,7 @@
 
     .punishment:hover {
       transform: translateX(3px);
-      background: var(--soft);
+      background: rgba(173, 197, 236, 0.08);
     }
 
     .punishment input {
@@ -234,7 +510,7 @@
 
     .punishment .txt {
       font-size: 0.95rem;
-      color: #d9e6ff;
+      color: #153867;
       font-weight: 600;
     }
 
@@ -247,9 +523,9 @@
     }
 
     .remove-punishment-btn {
-      border: 1px solid rgba(248, 113, 113, 0.4);
-      background: rgba(248, 113, 113, 0.12);
-      color: #fecaca;
+      border: 1px solid rgba(248, 113, 113, 0.25);
+      background: transparent;
+      color: #fbb8b8;
       width: 24px;
       height: 24px;
       padding: 0;
@@ -272,13 +548,13 @@
     }
 
     .punishment:has(input:checked) {
-      background: linear-gradient(90deg, rgba(56, 189, 248, 0.2), rgba(52, 211, 153, 0.18));
+      background: rgba(14, 165, 233, 0.14);
       transform: translateX(0);
     }
 
     .actions {
       display: flex;
-      gap: 10px;
+      gap: 16px;
       margin-bottom: 14px;
     }
 
@@ -293,15 +569,16 @@
     }
 
     .save {
-      background: linear-gradient(120deg, var(--accent-1), #2dd4bf);
-      color: #02131a;
+      background: rgba(14, 165, 233, 0.2);
+      color: #0e3058;
       flex: 1;
+      border: 1px solid rgba(14, 165, 233, 0.4);
     }
 
     .clear {
       background: transparent;
-      color: #dbeafe;
-      border: 1px solid var(--line);
+      color: #204b85;
+      border: 1px solid rgba(79, 107, 149, 0.3);
     }
 
     button:hover {
@@ -310,13 +587,13 @@
     }
 
     .custom-row .add-punishment {
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.03);
-      color: #dbeafe;
+      border: 1px solid rgba(79, 107, 149, 0.28);
+      background: transparent;
+      color: #204b85;
     }
 
     .history {
-      border-top: 1px solid var(--line);
+      border-top: 1px solid rgba(79, 107, 149, 0.22);
       margin-top: 12px;
       padding-top: 12px;
       max-height: 300px;
@@ -328,7 +605,7 @@
     .entry {
       background: transparent;
       border: 0;
-      border-left: 2px solid rgba(56, 189, 248, 0.45);
+      border-left: 1px solid rgba(14, 165, 233, 0.42);
       border-radius: 0;
       padding: 2px 0 2px 10px;
       animation: pop 260ms ease;
@@ -340,7 +617,7 @@
       align-items: center;
       gap: 8px;
       font-size: 0.86rem;
-      color: #c7d2fe;
+      color: #36557f;
       flex-wrap: wrap;
     }
 
@@ -351,9 +628,9 @@
     }
 
     .attach-proof-btn {
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.03);
-      color: #dbeafe;
+      border: 1px solid rgba(79, 107, 149, 0.28);
+      background: transparent;
+      color: #204b85;
       border-radius: 999px;
       padding: 4px 10px;
       font-size: 0.78rem;
@@ -381,7 +658,7 @@
 
     .entry .nota {
       margin: 0;
-      color: #c6d7f6;
+      color: #44648f;
       font-size: 0.92rem;
       word-break: break-word;
     }
@@ -389,19 +666,43 @@
     .proof-media {
       margin-top: 8px;
       width: min(100%, 340px);
-      border-radius: 12px;
-      border: 1px solid var(--line);
+      border-radius: 8px;
+      border: 1px solid rgba(79, 107, 149, 0.24);
       display: block;
     }
 
     .empty {
-      color: #b8caeb;
+      color: #4f6b95;
       font-size: 0.92rem;
       opacity: 0.9;
     }
 
-    .panel.sebastian h2 { color: #7dd3fc; }
-    .panel.valentina h2 { color: #fdba74; }
+    .celebration {
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      transform: translate(-50%, 20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 240ms ease;
+      z-index: 20;
+      border: 1px solid rgba(79, 107, 149, 0.26);
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: rgba(14, 165, 233, 0.18);
+      color: #0f2f56;
+      font-size: 0.86rem;
+      backdrop-filter: blur(4px);
+      white-space: nowrap;
+    }
+
+    .celebration.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    .panel.sebastian h2 { color: #0284c7; }
+    .panel.valentina h2 { color: #ea580c; }
 
     @keyframes rise {
       from { opacity: 0; transform: translateY(14px); }
@@ -448,20 +749,36 @@
 
     @media (max-width: 600px) {
       body { padding: 16px; }
-      .wrap { max-width: 100%; }
+      .wrap { max-width: 100%; padding-bottom: 72px; }
       .hero { margin-bottom: 24px; }
       .hero h1 { font-size: clamp(1.75rem, 8.6vw, 2.2rem); }
       .actions { flex-direction: column; }
       .hero p { font-size: 0.9rem; }
+      .theme-dock {
+        right: 10px;
+        top: 10px;
+      }
+      .theme-toggle {
+        padding: 3px;
+      }
+      .theme-menu {
+        min-width: 92px;
+      }
+      .motivation { margin: 16px 0 22px; }
+      .daily-quote { font-size: 0.84rem; }
       .board {
-        gap: 12px;
+        gap: 18px;
         grid-auto-columns: minmax(88vw, 360px);
       }
       .panel {
-        border-radius: 18px;
+        border-radius: 0;
         padding: 12px 11px 11px;
       }
       .panel h2 { font-size: 1rem; }
+      .streak {
+        font-size: 0.62rem;
+        padding: 0;
+      }
       label {
         font-size: 0.68rem;
         letter-spacing: 0.7px;
@@ -478,6 +795,9 @@
         flex-direction: column;
         align-items: stretch;
         gap: 10px;
+      }
+      .custom-head {
+        margin-bottom: 18px;
       }
       .add-punishment {
         width: 100%;
@@ -523,9 +843,22 @@
       .proof-media {
         width: 100%;
       }
+      .victory-wall {
+        margin-top: 22px;
+        padding: 14px 0 0;
+      }
+      .victory-grid {
+        grid-template-columns: 1fr;
+      }
       .signature {
-        margin-top: 14px;
+        margin-top: 28px;
         font-size: 0.72rem;
+      }
+      .celebration {
+        font-size: 0.75rem;
+        max-width: calc(100vw - 24px);
+        white-space: normal;
+        text-align: center;
       }
     }
 
@@ -567,15 +900,36 @@
       <p>Rutina en pareja: motivo + castigo + registro para Sebastian y Valentina.</p>
     </section>
 
+    <section class="motivation">
+      <p class="daily-quote" id="daily-quote"></p>
+    </section>
     <section class="board" id="board"></section>
+    <section class="victory-wall" id="victory-wall"></section>
     <p class="signature">Powered by <strong>WeWeb</strong></p>
   </main>
+  <aside class="theme-dock">
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Cambiar colores" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3a9 9 0 1 0 9 9c0-1.1-.9-2-2-2h-2.5a2.5 2.5 0 1 1 0-5H18a3 3 0 0 0-6-2z"></path>
+        <path d="M7.5 12h.01"></path>
+        <path d="M8.5 8h.01"></path>
+        <path d="M12 6.5h.01"></path>
+      </svg>
+    </button>
+    <div class="theme-menu" id="theme-menu">
+      <button class="theme-swatch" type="button" data-theme="default" aria-label="Tema claro" style="background: linear-gradient(135deg,#eef5ff,#dbeafe);"></button>
+      <button class="theme-swatch" type="button" data-theme="ocean" aria-label="Tema oceano" style="background: linear-gradient(135deg,#e9f7ff,#a5f3fc);"></button>
+      <button class="theme-swatch" type="button" data-theme="midnight" aria-label="Tema negro midnight" style="background: linear-gradient(135deg,#070b14,#1e293b);"></button>
+      <button class="theme-swatch" type="button" data-theme="graphite" aria-label="Tema negro graphite" style="background: linear-gradient(135deg,#0f1115,#374151);"></button>
+    </div>
+  </aside>
 
   <template id="panel-template">
     <article class="panel">
       <div class="person-head">
         <img class="avatar" alt="" />
         <h2></h2>
+        <span class="streak" data-streak>Racha: 0 dias</span>
       </div>
       <form>
         <div class="motivos">
@@ -590,9 +944,13 @@
         </div>
 
         <label>Escoge un castigo</label>
+        <p class="punishment-tip">Tip: snack pequeno = castigo leve. Comida chatarra completa = castigo fuerte.</p>
         <div class="cards"></div>
-        <div class="custom-punishment">
+        <div class="custom-head">
           <label>Agregar castigo personalizado</label>
+          <button type="button" class="custom-toggle" aria-label="Mostrar agregar castigo" aria-expanded="false">+</button>
+        </div>
+        <div class="custom-punishment">
           <div class="custom-row">
             <input name="nuevoCastigo" type="text" placeholder="Ej: 40 jumping jacks" />
             <button type="button" class="add-punishment">Agregar castigo</button>
@@ -608,6 +966,7 @@
       <section class="history"></section>
     </article>
   </template>
+  <div class="celebration" id="celebration"></div>
 
   <script>
     const STORAGE_KEY = "castigos-pareja-v2";
@@ -617,24 +976,29 @@
 
     const punishments = [
       {
-        id: "lagartijas-10",
-        title: "10 lagartijas",
-        image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=80"
+        id: "burpees-50-100",
+        title: "50-100 burpees el mismo dia",
+        image: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=900&q=80"
       },
       {
-        id: "abdominales-20",
-        title: "20 abdominales",
-        image: "https://images.unsplash.com/photo-1599058917765-a780eda07a3e?auto=format&fit=crop&w=900&q=80"
+        id: "plancha-5-10",
+        title: "5-10 min extra de plancha",
+        image: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=900&q=80"
       },
       {
-        id: "sentadillas-25",
-        title: "25 sentadillas",
+        id: "cardio-extra-20-30",
+        title: "Sesion extra de cardio (20-30 min)",
+        image: "https://images.unsplash.com/photo-1549570652-97324981a6fd?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        id: "musculo-menor-gusto",
+        title: "Entrenar el musculo que menos le gusta",
         image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=900&q=80"
       },
       {
-        id: "plancha-60",
-        title: "Plancha 60 segundos",
-        image: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=900&q=80"
+        id: "mini-rutina-impuesta",
+        title: "Mini rutina impuesta por el otro",
+        image: "https://images.unsplash.com/photo-1599058917765-a780eda07a3e?auto=format&fit=crop&w=900&q=80"
       }
     ];
 
@@ -664,6 +1028,23 @@
 
     const board = document.getElementById("board");
     const template = document.getElementById("panel-template");
+    const themeToggle = document.getElementById("theme-toggle");
+    const themeMenu = document.getElementById("theme-menu");
+    const themeSwatches = [...document.querySelectorAll(".theme-swatch")];
+    const dailyQuoteElement = document.getElementById("daily-quote");
+    const victoryWallElement = document.getElementById("victory-wall");
+    const celebrationElement = document.getElementById("celebration");
+    const THEME_KEY = "shipment-theme-v1";
+    let celebrationTimer = null;
+
+    const motivationalQuotes = [
+      "Un castigo hoy, una version mas fuerte manana.",
+      "Disciplina en pareja: cuando uno cae, el otro levanta.",
+      "No buscamos perfeccion, buscamos constancia.",
+      "Cada repeticion cuenta para la mejor version de ustedes.",
+      "ShipMent: amor, disciplina y resultados.",
+      "Hoy duele, manana se agradece."
+    ];
 
     function saveState() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -677,6 +1058,101 @@
       return new Date(iso).toLocaleString("es-CO", {
         dateStyle: "short",
         timeStyle: "short"
+      });
+    }
+
+    function getDateKey(dateLike) {
+      const d = new Date(dateLike);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function getStreak(entries) {
+      if (!entries.length) return 0;
+      const dayNumbers = [...new Set(entries.map((item) => getDateKey(item.fecha)))]
+        .map((dateKey) => new Date(`${dateKey}T00:00:00`).getTime())
+        .sort((a, b) => b - a);
+
+      let streak = 1;
+      for (let i = 0; i < dayNumbers.length - 1; i += 1) {
+        const current = dayNumbers[i];
+        const next = dayNumbers[i + 1];
+        const oneDay = 24 * 60 * 60 * 1000;
+        if (current - next === oneDay) {
+          streak += 1;
+        } else {
+          break;
+        }
+      }
+      return streak;
+    }
+
+    function getDailyQuote() {
+      const todayKey = getDateKey(new Date());
+      const numericSeed = todayKey.split("-").join("").split("").reduce((acc, n) => acc + Number(n), 0);
+      return motivationalQuotes[numericSeed % motivationalQuotes.length];
+    }
+
+    function renderDailyQuote() {
+      dailyQuoteElement.textContent = getDailyQuote();
+    }
+
+    function buildMilestones(entries) {
+      const total = entries.length;
+      const withProof = entries.filter((item) => item.proof).length;
+      const streak = getStreak(entries);
+      const goals = [];
+      if (total >= 1) goals.push("Primer castigo registrado");
+      if (total >= 5) goals.push("5 castigos cumplidos");
+      if (total >= 10) goals.push("10 castigos cumplidos");
+      if (withProof >= 3) goals.push("3 pruebas subidas");
+      if (streak >= 3) goals.push(`${streak} dias de racha`);
+      return goals.length ? goals.join(" • ") : "Empiecen hoy y desbloqueen su primera victoria.";
+    }
+
+    function renderVictoryWall() {
+      const totalSebastian = state.sebastian.length;
+      const totalValentina = state.valentina.length;
+      const totalPareja = totalSebastian + totalValentina;
+
+      victoryWallElement.innerHTML = `
+        <h3>Muro de Victorias</h3>
+        <div class="victory-grid">
+          <article class="victory-item">
+            <strong>Sebastian</strong>
+            <p>${buildMilestones(state.sebastian)}</p>
+          </article>
+          <article class="victory-item">
+            <strong>Valentina</strong>
+            <p>${buildMilestones(state.valentina)}</p>
+          </article>
+          <article class="victory-item">
+            <strong>Pareja</strong>
+            <p>${totalPareja ? `${totalPareja} castigos registrados juntos.` : "Aun no hay registros en pareja."}</p>
+          </article>
+        </div>
+      `;
+    }
+
+    function showCelebration(personLabel, punishment) {
+      celebrationElement.textContent = `🔥 ${personLabel} completo: ${punishment}`;
+      celebrationElement.classList.add("show");
+      clearTimeout(celebrationTimer);
+      celebrationTimer = setTimeout(() => {
+        celebrationElement.classList.remove("show");
+      }, 1800);
+    }
+
+    function applyTheme(theme) {
+      if (!theme || theme === "default") {
+        document.body.removeAttribute("data-theme");
+      } else {
+        document.body.setAttribute("data-theme", theme);
+      }
+      themeSwatches.forEach((swatch) => {
+        swatch.classList.toggle("active", swatch.dataset.theme === (theme || "default"));
       });
     }
 
@@ -752,7 +1228,7 @@
         },
         {
           match: ["burpee", "jumping jacks", "cardio", "correr", "trotar", "saltar cuerda"],
-          image: "https://images.unsplash.com/photo-1549570652-97324981a6fd?auto=format&fit=crop&w=900&q=80"
+          image: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=900&q=80"
         }
       ];
 
@@ -803,6 +1279,7 @@
       const clone = template.content.cloneNode(true);
       const panel = clone.querySelector(".panel");
       const avatar = clone.querySelector(".avatar");
+      const streakNode = clone.querySelector("[data-streak]");
       panel.classList.add(person.className);
       panel.querySelector("h2").textContent = person.label;
       avatar.src = person.photo;
@@ -813,6 +1290,8 @@
       const history = panel.querySelector(".history");
       const clearBtn = panel.querySelector(".clear");
       const addPunishmentBtn = panel.querySelector(".add-punishment");
+      const customToggleBtn = panel.querySelector(".custom-toggle");
+      const customPunishmentBox = panel.querySelector(".custom-punishment");
       const newPunishmentInput = form.elements["nuevoCastigo"];
       const proofPicker = document.createElement("input");
       proofPicker.type = "file";
@@ -823,6 +1302,14 @@
 
       cards.innerHTML = createPunishmentCards(person.key);
       renderHistory(history, person.key);
+      streakNode.textContent = `Racha: ${getStreak(state[person.key])} dias`;
+
+      customToggleBtn.addEventListener("click", () => {
+        const isOpen = customPunishmentBox.classList.toggle("open");
+        customToggleBtn.textContent = isOpen ? "−" : "+";
+        customToggleBtn.setAttribute("aria-expanded", String(isOpen));
+        if (isOpen) newPunishmentInput.focus();
+      });
 
       cards.addEventListener("click", (e) => {
         const removeBtn = e.target.closest(".remove-punishment-btn");
@@ -854,7 +1341,9 @@
         saveCustomPunishments();
         cards.innerHTML = createPunishmentCards(person.key, value);
         newPunishmentInput.value = "";
-        newPunishmentInput.focus();
+        customPunishmentBox.classList.remove("open");
+        customToggleBtn.textContent = "+";
+        customToggleBtn.setAttribute("aria-expanded", "false");
       });
 
       newPunishmentInput.addEventListener("keydown", (e) => {
@@ -899,6 +1388,7 @@
         try {
           saveState();
           renderHistory(history, person.key);
+          renderVictoryWall();
         } catch {
           targetEntry.proof = previousProof;
           alert("No se pudo guardar la prueba adjunta por limite del navegador.");
@@ -934,6 +1424,9 @@
           return;
         }
         renderHistory(history, person.key);
+        streakNode.textContent = `Racha: ${getStreak(state[person.key])} dias`;
+        renderVictoryWall();
+        showCelebration(person.label, newEntry.castigo);
 
         motivoInput.value = "";
         notaInput.value = "";
@@ -947,12 +1440,40 @@
         state[person.key] = [];
         saveState();
         renderHistory(history, person.key);
+        streakNode.textContent = "Racha: 0 dias";
+        renderVictoryWall();
       });
 
       board.appendChild(clone);
     }
 
+    const savedTheme = localStorage.getItem(THEME_KEY) || "default";
+    applyTheme(savedTheme);
+
+    themeToggle.addEventListener("click", () => {
+      const isOpen = themeMenu.classList.toggle("open");
+      themeToggle.setAttribute("aria-expanded", String(isOpen));
+    });
+
+    themeSwatches.forEach((swatch) => {
+      swatch.addEventListener("click", () => {
+        const nextTheme = swatch.dataset.theme || "default";
+        localStorage.setItem(THEME_KEY, nextTheme);
+        applyTheme(nextTheme);
+        themeMenu.classList.remove("open");
+        themeToggle.setAttribute("aria-expanded", "false");
+      });
+    });
+
+    document.addEventListener("click", (e) => {
+      if (e.target.closest(".theme-dock")) return;
+      themeMenu.classList.remove("open");
+      themeToggle.setAttribute("aria-expanded", "false");
+    });
+
+    renderDailyQuote();
     people.forEach(addPersonPanel);
+    renderVictoryWall();
   </script>
 </body>
 </html>
