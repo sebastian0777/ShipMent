@@ -671,6 +671,17 @@
       display: block;
     }
 
+    .proof-wrap {
+      margin-top: 6px;
+    }
+
+    .proof-wrap summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 0.82rem;
+      user-select: none;
+    }
+
     .empty {
       color: #4f6b95;
       font-size: 0.92rem;
@@ -1036,6 +1047,7 @@
     const celebrationElement = document.getElementById("celebration");
     const THEME_KEY = "shipment-theme-v1";
     let celebrationTimer = null;
+    const panelBindings = [];
 
     const motivationalQuotes = [
       "Un castigo hoy, una version mas fuerte manana.",
@@ -1160,10 +1172,10 @@
       if (!proof?.dataUrl || !proof?.mimeType) return "";
       const linkText = proof.linkedTo ? `<p class="nota">Prueba vinculada a: ${proof.linkedTo}</p>` : "";
       if (proof.mimeType.startsWith("video/")) {
-        return `${linkText}<video class="proof-media" src="${proof.dataUrl}" controls preload="metadata"></video>`;
+        return `${linkText}<details class="proof-wrap"><summary>Ver prueba</summary><video class="proof-media" src="${proof.dataUrl}" controls preload="metadata"></video></details>`;
       }
       if (proof.mimeType.startsWith("image/")) {
-        return `${linkText}<img class="proof-media" src="${proof.dataUrl}" alt="Prueba del castigo" loading="lazy" />`;
+        return `${linkText}<details class="proof-wrap"><summary>Ver prueba</summary><img class="proof-media" src="${proof.dataUrl}" alt="Prueba del castigo" loading="lazy" /></details>`;
       }
       return "";
     }
@@ -1177,21 +1189,37 @@
       });
     }
 
-    function renderHistory(container, personKey) {
-      const data = state[personKey];
+    function getSharedEntries() {
+      const merged = [];
+      people.forEach((person) => {
+        const entries = state[person.key] || [];
+        entries.forEach((entry, index) => {
+          merged.push({
+            ...entry,
+            ownerKey: person.key,
+            ownerLabel: person.label,
+            ownerIndex: index
+          });
+        });
+      });
+      return merged.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    }
+
+    function renderHistory(container) {
+      const data = getSharedEntries();
       if (!data.length) {
         container.innerHTML = '<div class="empty">Todavia no hay castigos registrados.</div>';
         return;
       }
 
       container.innerHTML = data
-        .map((item, index) => `
+        .map((item) => `
           <article class="entry">
             <div class="top">
-              <span><strong>${item.castigo}</strong></span>
+              <span><strong>${item.castigo}</strong> · ${item.ownerLabel}</span>
               <div class="entry-tools">
                 <span>${formatDate(item.fecha)}</span>
-                <button type="button" class="attach-proof-btn" data-index="${index}" aria-label="Adjuntar prueba a este castigo">
+                <button type="button" class="attach-proof-btn" data-owner="${item.ownerKey}" data-owner-index="${item.ownerIndex}" aria-label="Adjuntar prueba a este castigo">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M21.44 11.05L12.25 20.24a6 6 0 1 1-8.49-8.49l9.2-9.19a4 4 0 0 1 5.65 5.66l-9.2 9.19a2 2 0 1 1-2.83-2.83l8.48-8.48"></path>
                   </svg>
@@ -1205,6 +1233,13 @@
           </article>
         `)
         .join("");
+    }
+
+    function refreshAllPanels() {
+      panelBindings.forEach((binding) => {
+        renderHistory(binding.history);
+        binding.streakNode.textContent = `Racha: ${getStreak(state[binding.personKey])} dias`;
+      });
     }
 
     function getPunishmentImageByTitle(title) {
@@ -1298,11 +1333,11 @@
       proofPicker.accept = "image/*,video/*";
       proofPicker.style.display = "none";
       panel.appendChild(proofPicker);
-      let pendingAttachIndex = null;
+      let pendingAttach = null;
 
       cards.innerHTML = createPunishmentCards(person.key);
-      renderHistory(history, person.key);
-      streakNode.textContent = `Racha: ${getStreak(state[person.key])} dias`;
+      panelBindings.push({ personKey: person.key, history, streakNode });
+      refreshAllPanels();
 
       customToggleBtn.addEventListener("click", () => {
         const isOpen = customPunishmentBox.classList.toggle("open");
@@ -1355,25 +1390,29 @@
       history.addEventListener("click", (e) => {
         const button = e.target.closest(".attach-proof-btn");
         if (!button) return;
-        pendingAttachIndex = Number(button.dataset.index);
+        pendingAttach = {
+          ownerKey: button.dataset.owner,
+          ownerIndex: Number(button.dataset.ownerIndex)
+        };
         proofPicker.click();
       });
 
       proofPicker.addEventListener("change", async () => {
         const pickedFile = proofPicker.files?.[0];
-        if (pendingAttachIndex === null || !pickedFile) return;
+        if (!pendingAttach || !pickedFile) return;
 
         if (pickedFile.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
           alert(`El archivo es muy grande. Maximo ${MAX_FILE_SIZE_MB} MB.`);
           proofPicker.value = "";
-          pendingAttachIndex = null;
+          pendingAttach = null;
           return;
         }
 
-        const targetEntry = state[person.key][pendingAttachIndex];
+        const targetList = state[pendingAttach.ownerKey] || [];
+        const targetEntry = targetList[pendingAttach.ownerIndex];
         if (!targetEntry) {
           proofPicker.value = "";
-          pendingAttachIndex = null;
+          pendingAttach = null;
           return;
         }
 
@@ -1387,7 +1426,7 @@
 
         try {
           saveState();
-          renderHistory(history, person.key);
+          refreshAllPanels();
           renderVictoryWall();
         } catch {
           targetEntry.proof = previousProof;
@@ -1395,7 +1434,7 @@
         }
 
         proofPicker.value = "";
-        pendingAttachIndex = null;
+        pendingAttach = null;
       });
 
       form.addEventListener("submit", async (e) => {
@@ -1423,8 +1462,7 @@
           alert("No se pudo guardar: la prueba es demasiado pesada para guardar en el navegador.");
           return;
         }
-        renderHistory(history, person.key);
-        streakNode.textContent = `Racha: ${getStreak(state[person.key])} dias`;
+        refreshAllPanels();
         renderVictoryWall();
         showCelebration(person.label, newEntry.castigo);
 
@@ -1439,8 +1477,7 @@
 
         state[person.key] = [];
         saveState();
-        renderHistory(history, person.key);
-        streakNode.textContent = "Racha: 0 dias";
+        refreshAllPanels();
         renderVictoryWall();
       });
 
