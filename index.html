@@ -1114,6 +1114,13 @@
       state.sebastian = [];
       state.valentina = [];
       rows.forEach((row) => {
+        const guessType = (() => {
+          const url = (row.proof_url || "").toLowerCase();
+          if (row.proof_type) return row.proof_type;
+          if (url.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/)) return "image/*";
+          if (url.match(/\.(mp4|mov|webm|m4v)(\?|$)/)) return "video/*";
+          return "";
+        })();
         if (!state[row.person_key]) return;
         state[row.person_key].push({
           id: row.id,
@@ -1122,7 +1129,7 @@
           nota: row.nota || "",
           fecha: row.fecha || row.created_at,
           proof: row.proof_url ? {
-            mimeType: row.proof_type || "",
+            mimeType: guessType,
             dataUrl: row.proof_url,
             linkedTo: row.linked_to || row.castigo
           } : null
@@ -1301,15 +1308,16 @@
     }
 
     function renderProof(proof) {
-      if (!proof?.dataUrl || !proof?.mimeType) return "";
+      if (!proof?.dataUrl) return "";
+      const mime = (proof.mimeType || "").toLowerCase();
       const linkText = proof.linkedTo ? `<p class="nota">Prueba vinculada a: ${proof.linkedTo}</p>` : "";
-      if (proof.mimeType.startsWith("video/")) {
+      if (mime.startsWith("video/")) {
         return `${linkText}<details class="proof-wrap"><summary>Ver prueba</summary><video class="proof-media" src="${proof.dataUrl}" controls preload="metadata"></video></details>`;
       }
-      if (proof.mimeType.startsWith("image/")) {
+      if (mime.startsWith("image/")) {
         return `${linkText}<details class="proof-wrap"><summary>Ver prueba</summary><img class="proof-media" src="${proof.dataUrl}" alt="Prueba del castigo" loading="lazy" /></details>`;
       }
-      return "";
+      return `${linkText}<details class="proof-wrap"><summary>Ver prueba</summary><a href="${proof.dataUrl}" target="_blank" rel="noopener noreferrer">Abrir archivo</a></details>`;
     }
 
     async function ensureCloudReady() {
@@ -1365,25 +1373,14 @@
       if (error) throw error;
     }
 
-    function getSharedEntries() {
-      const merged = [];
-      people.forEach((person) => {
-        const entries = state[person.key] || [];
-        entries.forEach((entry, index) => {
-          merged.push({
-            ...entry,
-            id: entry.id || null,
-            ownerKey: person.key,
-            ownerLabel: person.label,
-            ownerIndex: index
-          });
-        });
-      });
-      return merged.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-    }
-
-    function renderHistory(container) {
-      const data = getSharedEntries();
+    function renderHistory(container, personKey) {
+      const data = (state[personKey] || [])
+        .map((entry, index) => ({
+          ...entry,
+          ownerKey: personKey,
+          ownerIndex: index
+        }))
+        .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
       if (!data.length) {
         container.innerHTML = '<div class="empty">Todavia no hay castigos registrados.</div>';
         return;
@@ -1393,7 +1390,7 @@
         .map((item) => `
           <article class="entry">
             <div class="top">
-              <span><strong>${item.castigo}</strong> · ${item.ownerLabel}</span>
+              <span><strong>${item.castigo}</strong></span>
               <div class="entry-tools">
                 <span>${formatDate(item.fecha)}</span>
                 <button type="button" class="attach-proof-btn" data-entry-id="${item.id || ""}" data-owner="${item.ownerKey}" data-owner-index="${item.ownerIndex}" aria-label="Adjuntar prueba a este castigo">
@@ -1414,7 +1411,7 @@
 
     function refreshAllPanels() {
       panelBindings.forEach((binding) => {
-        renderHistory(binding.history);
+        renderHistory(binding.history, binding.personKey);
         binding.streakNode.textContent = `Racha: ${getStreak(state[binding.personKey])} dias`;
       });
     }
