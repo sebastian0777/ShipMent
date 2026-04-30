@@ -715,6 +715,7 @@
       user-select: none;
     }
 
+
     .empty {
       color: #4f6b95;
       font-size: 0.92rem;
@@ -1110,10 +1111,10 @@
       cloudDotElement.classList.toggle("ok", ok);
     }
 
-    function setStateFromRows(rows) {
+    async function setStateFromRows(rows) {
       state.sebastian = [];
       state.valentina = [];
-      rows.forEach((row) => {
+      for (const row of rows) {
         const guessType = (() => {
           const url = (row.proof_url || "").toLowerCase();
           if (row.proof_type) return row.proof_type;
@@ -1121,6 +1122,15 @@
           if (url.match(/\.(mp4|mov|webm|m4v)(\?|$)/)) return "video/*";
           return "";
         })();
+
+        let proofUrl = row.proof_url || "";
+        if (proofUrl && supabaseClient && !/^https?:\/\//i.test(proofUrl)) {
+          const { data: signedData } = await supabaseClient.storage
+            .from("punishment-proofs")
+            .createSignedUrl(proofUrl, 60 * 60 * 24 * 7);
+          if (signedData?.signedUrl) proofUrl = signedData.signedUrl;
+        }
+
         if (!state[row.person_key]) return;
         state[row.person_key].push({
           id: row.id,
@@ -1128,13 +1138,13 @@
           castigo: row.castigo,
           nota: row.nota || "",
           fecha: row.fecha || row.created_at,
-          proof: row.proof_url ? {
+          proof: proofUrl ? {
             mimeType: guessType,
-            dataUrl: row.proof_url,
+            dataUrl: proofUrl,
             linkedTo: row.linked_to || row.castigo
           } : null
         });
-      });
+      }
       state.sebastian.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
       state.valentina.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
     }
@@ -1152,7 +1162,7 @@
 
     async function refreshFromCloud() {
       const rows = await fetchCloudRows();
-      setStateFromRows(rows);
+      await setStateFromRows(rows);
       refreshAllPanels();
       renderVictoryWall();
     }
@@ -1312,12 +1322,12 @@
       const mime = (proof.mimeType || "").toLowerCase();
       const linkText = proof.linkedTo ? `<p class="nota">Prueba vinculada a: ${proof.linkedTo}</p>` : "";
       if (mime.startsWith("video/")) {
-        return `${linkText}<details class="proof-wrap"><summary>Ver prueba</summary><video class="proof-media" src="${proof.dataUrl}" controls preload="metadata"></video></details>`;
+        return `${linkText}<details class="proof-wrap"><summary>Ver prueba</summary><video class="proof-media" src="${proof.dataUrl}" controls preload="metadata" onerror="this.style.display='none'; this.insertAdjacentHTML('afterend','<p class=&quot;nota&quot;>No se pudo mostrar el video aqui.</p>');"></video></details>`;
       }
       if (mime.startsWith("image/")) {
-        return `${linkText}<details class="proof-wrap"><summary>Ver prueba</summary><img class="proof-media" src="${proof.dataUrl}" alt="Prueba del castigo" loading="lazy" /></details>`;
+        return `${linkText}<details class="proof-wrap"><summary>Ver prueba</summary><img class="proof-media" src="${proof.dataUrl}" alt="Prueba del castigo" loading="lazy" onerror="this.style.display='none'; this.insertAdjacentHTML('afterend','<p class=&quot;nota&quot;>No se pudo mostrar la imagen aqui.</p>');" /></details>`;
       }
-      return `${linkText}<details class="proof-wrap"><summary>Ver prueba</summary><a href="${proof.dataUrl}" target="_blank" rel="noopener noreferrer">Abrir archivo</a></details>`;
+      return `${linkText}<details class="proof-wrap"><summary>Ver prueba</summary><p class="nota">Archivo no compatible para vista previa.</p></details>`;
     }
 
     async function ensureCloudReady() {
@@ -1350,13 +1360,10 @@
         .upload(path, file, { upsert: true });
       if (uploadError) throw uploadError;
 
-      const { data } = supabaseClient.storage.from("punishment-proofs").getPublicUrl(path);
-      const proofUrl = data.publicUrl;
-
       const { error: updateError } = await supabaseClient
         .from("punishments")
         .update({
-          proof_url: proofUrl,
+          proof_url: path,
           proof_type: file.type || "",
           linked_to: linkedTo || ""
         })
