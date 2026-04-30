@@ -1111,6 +1111,40 @@
       cloudDotElement.classList.toggle("ok", ok);
     }
 
+    function extractStoragePath(value) {
+      if (!value) return "";
+      if (!/^https?:\/\//i.test(value)) return value;
+      const patterns = [
+        "/storage/v1/object/public/punishment-proofs/",
+        "/storage/v1/object/sign/punishment-proofs/"
+      ];
+      for (const pattern of patterns) {
+        const idx = value.indexOf(pattern);
+        if (idx >= 0) {
+          const path = value.slice(idx + pattern.length).split("?")[0];
+          return decodeURIComponent(path);
+        }
+      }
+      return "";
+    }
+
+    async function resolveProofUrl(rawValue) {
+      if (!rawValue || !supabaseClient) return "";
+      const asPath = extractStoragePath(rawValue);
+      if (asPath) {
+        const { data: signedData, error: signedError } = await supabaseClient.storage
+          .from("punishment-proofs")
+          .createSignedUrl(asPath, 60 * 60 * 24 * 7);
+        if (!signedError && signedData?.signedUrl) return signedData.signedUrl;
+
+        const { data: publicData } = supabaseClient.storage
+          .from("punishment-proofs")
+          .getPublicUrl(asPath);
+        if (publicData?.publicUrl) return publicData.publicUrl;
+      }
+      return /^https?:\/\//i.test(rawValue) ? rawValue : "";
+    }
+
     async function setStateFromRows(rows) {
       state.sebastian = [];
       state.valentina = [];
@@ -1123,13 +1157,7 @@
           return "";
         })();
 
-        let proofUrl = row.proof_url || "";
-        if (proofUrl && supabaseClient && !/^https?:\/\//i.test(proofUrl)) {
-          const { data: signedData } = await supabaseClient.storage
-            .from("punishment-proofs")
-            .createSignedUrl(proofUrl, 60 * 60 * 24 * 7);
-          if (signedData?.signedUrl) proofUrl = signedData.signedUrl;
-        }
+        const proofUrl = await resolveProofUrl(row.proof_url || "");
 
         if (!state[row.person_key]) return;
         state[row.person_key].push({
