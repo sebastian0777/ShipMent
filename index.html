@@ -244,6 +244,39 @@
       opacity: 0.9;
     }
 
+    .cloud-bar {
+      margin-top: 14px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .cloud-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+    }
+
+    .cloud-dot.ok {
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+    }
+
+    .cloud-btn {
+      border: 1px solid rgba(79, 107, 149, 0.28);
+      background: transparent;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.76rem;
+      cursor: pointer;
+    }
+
     .signature strong {
       color: #1e3a8a;
       font-weight: 700;
@@ -914,6 +947,11 @@
     <section class="motivation">
       <p class="daily-quote" id="daily-quote"></p>
     </section>
+    <section class="cloud-bar">
+      <span class="cloud-dot" id="cloud-dot"></span>
+      <span id="cloud-status">Sincronizacion: pendiente</span>
+      <button class="cloud-btn" id="cloud-setup" type="button">Configurar Supabase</button>
+    </section>
     <section class="board" id="board"></section>
     <section class="victory-wall" id="victory-wall"></section>
     <p class="signature">Powered by <strong>WeWeb</strong></p>
@@ -979,11 +1017,13 @@
   </template>
   <div class="celebration" id="celebration"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const STORAGE_KEY = "castigos-pareja-v2";
-    const LEGACY_STORAGE_KEY = "castigos-pareja-v1";
     const CUSTOM_PUNISHMENTS_KEY = "castigos-custom-v1";
     const MAX_FILE_SIZE_MB = 8;
+    const CLOUD_CONFIG_KEY = "shipment-supabase-config-v1";
+    const DEFAULT_SUPABASE_URL = "https://bibwlxjaxpqorxvblavpz.supabase.co";
+    const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpbndsanhhcHFvcnh2YmxhdnB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NzQ3MzAsImV4cCI6MjA5MzE1MDczMH0.IyGWDdGedN5qJWDWBHTbMvOILU8A6zsCQZcvQQHY270";
 
     const punishments = [
       {
@@ -1026,10 +1066,7 @@
       }
     };
 
-    const defaultState = { sebastian: [], valentina: [] };
-    const savedV2 = safeParse(localStorage.getItem(STORAGE_KEY), null);
-    const savedV1 = safeParse(localStorage.getItem(LEGACY_STORAGE_KEY), null);
-    const state = savedV2 || savedV1 || defaultState;
+    const state = { sebastian: [], valentina: [] };
     const customPunishments = safeParse(localStorage.getItem(CUSTOM_PUNISHMENTS_KEY), {
       sebastian: [],
       valentina: []
@@ -1045,9 +1082,19 @@
     const dailyQuoteElement = document.getElementById("daily-quote");
     const victoryWallElement = document.getElementById("victory-wall");
     const celebrationElement = document.getElementById("celebration");
+    const cloudDotElement = document.getElementById("cloud-dot");
+    const cloudStatusElement = document.getElementById("cloud-status");
+    const cloudSetupButton = document.getElementById("cloud-setup");
     const THEME_KEY = "shipment-theme-v1";
     let celebrationTimer = null;
     const panelBindings = [];
+    let supabaseClient = null;
+    let cloudConfig = safeParse(localStorage.getItem(CLOUD_CONFIG_KEY), null) || {
+      url: DEFAULT_SUPABASE_URL,
+      anonKey: DEFAULT_SUPABASE_ANON_KEY,
+      room: "shipment-room"
+    };
+    let realtimeChannel = null;
 
     const motivationalQuotes = [
       "Un castigo hoy, una version mas fuerte manana.",
@@ -1058,8 +1105,93 @@
       "Hoy duele, manana se agradece."
     ];
 
-    function saveState() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    function setCloudStatus(text, ok = false) {
+      cloudStatusElement.textContent = text;
+      cloudDotElement.classList.toggle("ok", ok);
+    }
+
+    function setStateFromRows(rows) {
+      state.sebastian = [];
+      state.valentina = [];
+      rows.forEach((row) => {
+        if (!state[row.person_key]) return;
+        state[row.person_key].push({
+          id: row.id,
+          motivo: row.motivo,
+          castigo: row.castigo,
+          nota: row.nota || "",
+          fecha: row.fecha || row.created_at,
+          proof: row.proof_url ? {
+            mimeType: row.proof_type || "",
+            dataUrl: row.proof_url,
+            linkedTo: row.linked_to || row.castigo
+          } : null
+        });
+      });
+      state.sebastian.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      state.valentina.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    }
+
+    async function fetchCloudRows() {
+      if (!supabaseClient || !cloudConfig?.room) return [];
+      const { data, error } = await supabaseClient
+        .from("punishments")
+        .select("*")
+        .eq("room_id", cloudConfig.room)
+        .order("fecha", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+
+    async function refreshFromCloud() {
+      const rows = await fetchCloudRows();
+      setStateFromRows(rows);
+      refreshAllPanels();
+      renderVictoryWall();
+    }
+
+    async function connectCloud() {
+      if (!cloudConfig?.url || !cloudConfig?.anonKey || !cloudConfig?.room) {
+        setCloudStatus("Sincronizacion: configura Supabase");
+        return;
+      }
+      try {
+        supabaseClient = window.supabase.createClient(cloudConfig.url, cloudConfig.anonKey);
+        await refreshFromCloud();
+        if (realtimeChannel) {
+          supabaseClient.removeChannel(realtimeChannel);
+          realtimeChannel = null;
+        }
+        realtimeChannel = supabaseClient
+          .channel(`room-${cloudConfig.room}`)
+          .on("postgres_changes", {
+            event: "*",
+            schema: "public",
+            table: "punishments",
+            filter: `room_id=eq.${cloudConfig.room}`
+          }, async () => {
+            try {
+              await refreshFromCloud();
+            } catch {}
+          })
+          .subscribe();
+        setCloudStatus(`Sincronizacion: conectada (${cloudConfig.room})`, true);
+      } catch (error) {
+        setCloudStatus("Sincronizacion: error de conexion");
+        alert(`No se pudo conectar con Supabase: ${error.message}`);
+      }
+    }
+
+    function setupCloudConfig() {
+      const url = prompt("Supabase URL (https://xxxx.supabase.co)", cloudConfig?.url || DEFAULT_SUPABASE_URL);
+      if (!url) return;
+      const anonKey = prompt("Supabase Anon Key", cloudConfig?.anonKey || DEFAULT_SUPABASE_ANON_KEY);
+      if (!anonKey) return;
+      const room = prompt("Codigo de sala compartida (igual para ambos)", cloudConfig?.room || "shipment-room");
+      if (!room) return;
+      cloudConfig = { url: url.trim(), anonKey: anonKey.trim(), room: room.trim() };
+      localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(cloudConfig));
+      connectCloud();
     }
 
     function saveCustomPunishments() {
@@ -1180,13 +1312,57 @@
       return "";
     }
 
-    function readFileAsDataURL(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
-        reader.readAsDataURL(file);
-      });
+    async function ensureCloudReady() {
+      if (!supabaseClient) {
+        alert("Primero configuren Supabase desde el boton 'Configurar Supabase'.");
+        return false;
+      }
+      return true;
+    }
+
+    async function createCloudEntry(personKey, entry) {
+      const { error } = await supabaseClient
+        .from("punishments")
+        .insert({
+          room_id: cloudConfig.room,
+          person_key: personKey,
+          motivo: entry.motivo,
+          castigo: entry.castigo,
+          nota: entry.nota || "",
+          fecha: entry.fecha
+        });
+      if (error) throw error;
+    }
+
+    async function uploadProofAndSave(entryId, file, linkedTo) {
+      const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
+      const path = `${cloudConfig.room}/${entryId}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabaseClient.storage
+        .from("punishment-proofs")
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data } = supabaseClient.storage.from("punishment-proofs").getPublicUrl(path);
+      const proofUrl = data.publicUrl;
+
+      const { error: updateError } = await supabaseClient
+        .from("punishments")
+        .update({
+          proof_url: proofUrl,
+          proof_type: file.type || "",
+          linked_to: linkedTo || ""
+        })
+        .eq("id", entryId);
+      if (updateError) throw updateError;
+    }
+
+    async function clearCloudByPerson(personKey) {
+      const { error } = await supabaseClient
+        .from("punishments")
+        .delete()
+        .eq("room_id", cloudConfig.room)
+        .eq("person_key", personKey);
+      if (error) throw error;
     }
 
     function getSharedEntries() {
@@ -1196,6 +1372,7 @@
         entries.forEach((entry, index) => {
           merged.push({
             ...entry,
+            id: entry.id || null,
             ownerKey: person.key,
             ownerLabel: person.label,
             ownerIndex: index
@@ -1219,7 +1396,7 @@
               <span><strong>${item.castigo}</strong> · ${item.ownerLabel}</span>
               <div class="entry-tools">
                 <span>${formatDate(item.fecha)}</span>
-                <button type="button" class="attach-proof-btn" data-owner="${item.ownerKey}" data-owner-index="${item.ownerIndex}" aria-label="Adjuntar prueba a este castigo">
+                <button type="button" class="attach-proof-btn" data-entry-id="${item.id || ""}" data-owner="${item.ownerKey}" data-owner-index="${item.ownerIndex}" aria-label="Adjuntar prueba a este castigo">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M21.44 11.05L12.25 20.24a6 6 0 1 1-8.49-8.49l9.2-9.19a4 4 0 0 1 5.65 5.66l-9.2 9.19a2 2 0 1 1-2.83-2.83l8.48-8.48"></path>
                   </svg>
@@ -1391,6 +1568,7 @@
         const button = e.target.closest(".attach-proof-btn");
         if (!button) return;
         pendingAttach = {
+          entryId: button.dataset.entryId || null,
           ownerKey: button.dataset.owner,
           ownerIndex: Number(button.dataset.ownerIndex)
         };
@@ -1400,6 +1578,7 @@
       proofPicker.addEventListener("change", async () => {
         const pickedFile = proofPicker.files?.[0];
         if (!pendingAttach || !pickedFile) return;
+        if (!(await ensureCloudReady())) return;
 
         if (pickedFile.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
           alert(`El archivo es muy grande. Maximo ${MAX_FILE_SIZE_MB} MB.`);
@@ -1408,29 +1587,23 @@
           return;
         }
 
-        const targetList = state[pendingAttach.ownerKey] || [];
-        const targetEntry = targetList[pendingAttach.ownerIndex];
-        if (!targetEntry) {
+        let entryId = pendingAttach.entryId;
+        if (!entryId) {
+          const targetList = state[pendingAttach.ownerKey] || [];
+          const targetEntry = targetList[pendingAttach.ownerIndex];
+          entryId = targetEntry?.id || null;
+        }
+        if (!entryId) {
           proofPicker.value = "";
           pendingAttach = null;
           return;
         }
 
-        const previousProof = targetEntry.proof ?? null;
-        const dataUrl = await readFileAsDataURL(pickedFile);
-        targetEntry.proof = {
-          mimeType: pickedFile.type,
-          dataUrl,
-          linkedTo: targetEntry.castigo
-        };
-
         try {
-          saveState();
-          refreshAllPanels();
-          renderVictoryWall();
-        } catch {
-          targetEntry.proof = previousProof;
-          alert("No se pudo guardar la prueba adjunta por limite del navegador.");
+          await uploadProofAndSave(entryId, pickedFile, "");
+          await refreshFromCloud();
+        } catch (error) {
+          alert(`No se pudo guardar la prueba adjunta: ${error.message}`);
         }
 
         proofPicker.value = "";
@@ -1439,6 +1612,7 @@
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
+        if (!(await ensureCloudReady())) return;
 
         const motivoInput = form.elements["motivo"];
         const notaInput = form.elements["nota"];
@@ -1448,22 +1622,17 @@
           motivo: motivoInput.value.trim(),
           castigo: selected?.value || "Castigo personalizado",
           nota: notaInput.value.trim(),
-          proof: null,
           fecha: new Date().toISOString()
         };
 
         if (!newEntry.motivo) return;
-
-        state[person.key].unshift(newEntry);
         try {
-          saveState();
-        } catch {
-          state[person.key].shift();
-          alert("No se pudo guardar: la prueba es demasiado pesada para guardar en el navegador.");
+          await createCloudEntry(person.key, newEntry);
+          await refreshFromCloud();
+        } catch (error) {
+          alert(`No se pudo guardar: ${error.message}`);
           return;
         }
-        refreshAllPanels();
-        renderVictoryWall();
         showCelebration(person.label, newEntry.castigo);
 
         motivoInput.value = "";
@@ -1471,14 +1640,16 @@
         motivoInput.focus();
       });
 
-      clearBtn.addEventListener("click", () => {
+      clearBtn.addEventListener("click", async () => {
         const confirmClear = confirm(`Quieres borrar el historial de ${person.label}?`);
         if (!confirmClear) return;
-
-        state[person.key] = [];
-        saveState();
-        refreshAllPanels();
-        renderVictoryWall();
+        if (!(await ensureCloudReady())) return;
+        try {
+          await clearCloudByPerson(person.key);
+          await refreshFromCloud();
+        } catch (error) {
+          alert(`No se pudo limpiar: ${error.message}`);
+        }
       });
 
       board.appendChild(clone);
@@ -1508,9 +1679,12 @@
       themeToggle.setAttribute("aria-expanded", "false");
     });
 
+    cloudSetupButton.addEventListener("click", setupCloudConfig);
+
     renderDailyQuote();
     people.forEach(addPersonPanel);
     renderVictoryWall();
+    connectCloud();
   </script>
 </body>
 </html>
